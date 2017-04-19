@@ -3,4 +3,4 @@
 	filemode = true
 	bare = true
 [remote "origin"]
-	url = https://gerrit.googlesource.com/git-repo
+	url = git@coding.sec.samsung.net:dhs-shin/git-repo.git

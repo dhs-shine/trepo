@@ -1,0 +1,24 @@
+[general]
+#Current profile name which should match a profile section name
+profile = profile.{target_type}
+
+########################### PROFILES ############################
+[profile.standard]
+repos = repo.base-arm, repo.base-arm64, repo.base-ia32, repo.base-x86_64, repo.unified-standard
+
+[profile.emulator]
+repos = repo.base-ia32, repo.base-x86_64, repo.unified-emulator
+
+########################### REPO ADDRESSES ############################
+[repo.base-arm]
+url=http://download.tizen.org/snapshots/tizen/base/{base_version}/repos/arm/packages/
+[repo.base-arm64]
+url=http://download.tizen.org/snapshots/tizen/base/{base_version}/repos/arm64/packages/
+[repo.base-ia32]
+url=http://download.tizen.org/snapshots/tizen/base/{base_version}/repos/ia32/packages/
+[repo.base-x86_64]
+url=http://download.tizen.org/snapshots/tizen/base/{base_version}/repos/x86_64/packages/
+[repo.unified-standard]
+url=http://download.tizen.org/snapshots/tizen/unified/{snapshot_version}/repos/standard/packages/
+[repo.unified-emulator]
+url=http://download.tizen.org/snapshots/tizen/unified/{snapshot_version}/repos/emulator/packages/

@@ -1,0 +1,19 @@
+Source: trepo
+Section: devel
+Priority: optional
+Maintainer: Donghoon Shin <dhs.shin@samsung.com>
+Build-Depends: debhelper (>= 8.0.0), python3 (>= 3.3)
+Standards-Version: 3.9.4
+Homepage: http://www.tizen.org
+X-Python-Version: >= 3.3
+
+Package: trepo
+Architecture: all
+Depends: ${python3:Depends}, ${misc:Depends},
+ python3 (>= 3.3),
+ python3-yaml (>= 3.10),
+ python3-requests (>= 2.2.1),
+ python3-bs4 (>= 4.2.1),
+ git (>= 1.9),
+Description: Tizen repo
+ Tizen repo is a wrapper of git-repo for tizen platform source management

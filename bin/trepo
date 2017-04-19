@@ -1,0 +1,326 @@
+#!/usr/bin/python3
+# Copyright 2017 Samsung Electronics Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import os
+import re
+import sys
+import yaml
+import trepo
+import requests
+import functools
+import subprocess
+from argparse import (ArgumentParser,
+                      RawTextHelpFormatter)
+from distutils.dir_util import copy_tree
+from bs4 import BeautifulSoup
+
+
+# Base URL
+BASE_URL = 'http://download.tizen.org/snapshots/tizen/base/'
+# Unified Build Snapshot URL
+UBS_URL = 'http://download.tizen.org/snapshots/tizen/unified/{version}/'
+UBS_MANIFEST_URL = UBS_URL + 'builddata/manifest/{version}_{target}.xml'
+UBS_BUILDXML_URL = UBS_URL + 'build.xml'
+# Platform source URI
+PLATFORM_FETCH_URL = 'ssh://review.tizen.org/'
+# Configurations
+REMOTE_NAME = 'origin'
+TREPO_META_DIR = '.trepo'
+TREPO_INFO = '{}/trepo_info'.format(TREPO_META_DIR)
+REPO_CMD = '{}/repo'.format(trepo.__path__[0])
+VERSION_PATTERN = '[0-9]{8}\.[0-9]{1,2}'
+UBS_VERSION_PREFIX = 'tizen-unified_'
+
+
+# Helpers
+def load_yaml(filename):
+    """docstring for load_yaml"""
+    with open(os.path.abspath(os.path.expanduser(filename)), 'r') as stream:
+        data = yaml.load(stream)
+    return data
+
+
+def convert_snapshot_version(version='latest'):
+    """docstring for get_latest_version"""
+    if version != 'latest':
+        return '{}{}'.format(UBS_VERSION_PREFIX, version)
+    url = UBS_BUILDXML_URL.format(version='latest')
+    text = requests.get(url).text
+    return re.findall('{}{}'.format(UBS_VERSION_PREFIX, VERSION_PATTERN),
+                      text)[-1]
+
+
+def get_manifest(version, target):
+    """docstring for get_manifest"""
+    url = UBS_MANIFEST_URL.format(version=version, target=target)
+    return requests.get(url).text
+
+
+def find_base_repository_version(version):
+    """docstring for find_base_rpm_repository"""
+    base_soup = BeautifulSoup(requests.get(BASE_URL).text, 'html.parser')
+    base_lms = []
+    for base in base_soup.find_all('a', attrs={'href':
+                                               re.compile(VERSION_PATTERN)}):
+        base_build_xml = '{}{}build.xml'.format(BASE_URL, base['href'])
+        last_modified = requests.get(base_build_xml).headers['Last-Modified']
+        base_lms.append((base['href'], last_modified))
+
+    ubs_build_xml = UBS_BUILDXML_URL.format(version=version)
+    ubs_lm = requests.get(ubs_build_xml).headers['Last-Modified']
+
+    for base in reversed(base_lms):
+        if base[1] < ubs_lm:
+            return base[0].strip('/')
+    else:
+        return base_lms[-1][0].strip('/')
+
+
+def gen_gbs_conf(target_type, snapshot_version):
+    """docstring for gen_gbs_conf"""
+    with open('{}/gbs.conf.template'.format(TREPO_META_DIR), 'r') as f:
+        gbs_conf_template = f.read()
+
+    base_version = find_base_repository_version(snapshot_version)
+    gbs_conf = gbs_conf_template.format(target_type=target_type,
+                                        base_version=base_version,
+                                        snapshot_version=snapshot_version)
+    with open('{}/.gbs.conf'.format(os.getcwd()), 'w') as f:
+        f.write(gbs_conf)
+
+
+def subparser(func):
+    """docstring for subparser"""
+    @functools.wraps(func)
+    def wrapper(parser):
+        splitted = func.__doc__.split('\n')
+        name = func.__name__.split('_')[0]
+        subparser = parser.add_parser(name, help=splitted[0],
+                                      description='\n'.join(splitted[1:]),
+                                      formatter_class=RawTextHelpFormatter)
+        subparser.set_defaults(module='cmd_{0}'.format(name))
+        return func(subparser)
+    return wrapper
+
+
+# Command handlers
+def cmd_init(args):
+    """docstring for cmd_init"""
+    manifest_text = """<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <remote fetch="{fetch_url}" name="{remote_name}"/>
+  <default remote="{remote_name}"/>
+</manifest>
+""".format(fetch_url=PLATFORM_FETCH_URL, remote_name=REMOTE_NAME)
+    manifest_soup = BeautifulSoup(manifest_text, 'xml')
+
+    src = trepo.__path__[0]
+    copy_tree(src, '{}/{}'.format(os.getcwd(), TREPO_META_DIR))
+
+    config_file = args.config_file
+    snapshot_version = args.snapshot_version
+    package_names = args.package_names
+    target_type = args.target_type
+
+    # -f option has the highest priority
+    if config_file:
+        config = load_yaml(config_file)
+        if 'snapshot_version' in config:
+            snapshot_version = config['snapshot_version']
+        if 'target_type' in config:
+            target_type = config['target_type']
+        if 'package_names' in config:
+            package_names = config['package_names']
+
+    # Get manifest.xml from remote (download.tizen.org)
+    snapshot_version = convert_snapshot_version(snapshot_version)
+    remote_manifest = get_manifest(snapshot_version, target_type)
+    remote_soup = BeautifulSoup(remote_manifest, 'xml')
+
+    if not package_names:
+        projects = [p for p in remote_soup.find_all('project')]
+    else:
+        if type(package_names) is str:
+            package_names = [p.strip() for p in package_names.split(',')]
+        projects = []
+        for package in package_names:
+            project = remote_soup.find('project',
+                                       {'name': package.strip()})
+            if not project:
+                raise Exception('{} package does not exist in platform '
+                                'manifest.'.format(package))
+            projects.append(project)
+
+    for project in projects:
+        manifest_soup.manifest.append(project)
+
+    # Create temporary git to keep manifest xml file
+    manifest_dir = '{meta_dir}/manifest'.format(meta_dir=TREPO_META_DIR)
+    git_cmd = ['git', 'init', manifest_dir]
+    subprocess.call(git_cmd)
+
+    with open('{manifest_dir}/'
+              'default.xml'.format(manifest_dir=manifest_dir), 'w') as f:
+        f.write(manifest_soup.prettify())
+
+    temp_gitdir = '{manifest_dir}/.git'.format(manifest_dir=manifest_dir)
+    subprocess.call(['git', '--git-dir', temp_gitdir, '--work-tree',
+                     manifest_dir, 'add', 'default.xml'])
+    subprocess.call(['git', '--git-dir', temp_gitdir, '--work-tree',
+                     manifest_dir, 'commit', '-m', 'Update manifest'])
+    cwd = os.getcwd()
+    repo_base_cmd = [REPO_CMD, 'init',
+                     '-u', manifest_dir,
+                     '--repo-url',
+                     '{}/{}/git-repo.git'.format(cwd, TREPO_META_DIR),
+                     '--repo-branch', 'stable',
+                     '--quiet',
+                     '--no-repo-verify']
+
+    if args.config_name:
+        repo_base_cmd.append('--config-name')
+
+    subprocess.call(repo_base_cmd)
+
+    # Save trepo info
+    with open(TREPO_INFO, 'w') as f:
+        yaml.dump({'snapshot_version': snapshot_version,
+                   'target_type': target_type,
+                   'package_names': [project['name']
+                                     for project in projects]},
+                  f)
+
+
+def cmd_sync(args):
+    """docstring for cmd_sync"""
+    # Repo sync
+    try:
+        trepo_info = load_yaml(TREPO_INFO)
+        snapshot_version = trepo_info['snapshot_version']
+        repo_sync_cmd = [REPO_CMD, 'sync', '-f', '-j', '4']
+        subprocess.call(repo_sync_cmd)
+
+        # Create a topic branch
+        repo_start_cmd = [REPO_CMD, 'start', '--all', snapshot_version]
+        subprocess.call(repo_start_cmd)
+
+        # Generate gbs.conf.
+        gen_gbs_conf(trepo_info['target_type'], snapshot_version)
+
+    except Exception as e:
+        print(e)
+        subprocess.call([REPO_CMD, 'sync'])
+
+
+def cmd_status(args):
+    """docstring for cmd_status"""
+    status_cmd = [REPO_CMD, 'status']
+    subprocess.call(status_cmd)
+
+
+def cmd_info(args):
+    """docstring for cmd_info"""
+    try:
+        trepo_info = load_yaml(TREPO_INFO)
+        snapshot_version = trepo_info['snapshot_version']
+        target_type = trepo_info['target_type']
+        package_names = trepo_info['package_names']
+        print('tizen repo snapshot_version: {}'.format(snapshot_version))
+        print('tizen repo target_type: {}'.format(target_type))
+        print('tizen repo package_names:')
+        for package in package_names:
+            print('  {}'.format(package))
+    except Exception as e:
+        print(e)
+    info_cmd = [REPO_CMD, 'info']
+    subprocess.call(info_cmd)
+
+
+# Sub parsers
+@subparser
+def init_parser(parser):
+    """docstring for init_parser"""
+
+    # trepo
+    group = parser.add_argument_group('trepo options')
+    group.add_argument('-s', '--snapshot-version',
+                       dest='snapshot_version',
+                       help='snapshot version string (YYYYMMDD.N)',
+                       default='latest',
+                       metavar='SNAPSHOT')
+    group.add_argument('-t', '--target-type',
+                       dest='target_type',
+                       help='target type (standard/emulator). '
+                            'default value is standard',
+                       metavar='TARGETTYPE',
+                       default='standard')
+    group.add_argument('-p', '--package-names',
+                       dest='package_names',
+                       help='package names (separated by comma). '
+                       'If this is None then clone all package sources',
+                       metavar='PACKAGENAMES')
+    group.add_argument('-f', '--config-file',
+                       dest='config_file',
+                       help='tizenrepo configuration file name (yaml)',
+                       metavar='CONFIGFILE')
+    # Other
+    group = parser.add_argument_group('Other options')
+    group.add_argument('--config-name',
+                       dest='config_name', action="store_true", default=False,
+                       help='Always prompt for name/e-mail')
+
+
+@subparser
+def sync_parser(parser):
+    """docstring for sync_parser"""
+    pass
+
+
+@subparser
+def status_parser(parser):
+    """docstring for status_parser"""
+    pass
+
+
+@subparser
+def info_parser(parser):
+    """docstring for info_parser"""
+    pass
+
+
+# Main function
+def main(argv):
+    """docstring for main"""
+    description = """Tizen repo is a wrapper of git-repo.
+This wrapper helps users can init and sync tizen source code more easily.
+"""
+    parser = ArgumentParser(description=description)
+
+    parser.format_usage = parser.format_help
+    subparsers = parser.add_subparsers(title='subcommands',
+                                       dest='subcommands')
+    subparsers.required = True
+    for name, obj in sorted(globals().items()):
+        if name.endswith('_parser') and callable(obj):
+            obj(subparsers)
+
+    args = parser.parse_args(argv)
+
+    globals()[args.module](args)
+
+try:
+    sys.exit(main(sys.argv[1:]))
+except Exception as e:
+    print(e)
+    sys.exit(-1)

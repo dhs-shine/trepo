@@ -771,14 +771,14 @@ def _Help(args):
 
 
 def _NotInstalled():
-  _print('error: repo is not installed.  Use "repo init" to install it here.',
+  _print('error: repo is not installed.  Use "trepo init" to install it here.',
          file=sys.stderr)
   sys.exit(1)
 
 
 def _NoCommands(cmd):
   _print("""error: command '%s' requires repo to be installed first.
-         Use "repo init" to install it here.""" % cmd, file=sys.stderr)
+         Use "trepo init" to install it here.""" % cmd, file=sys.stderr)
   sys.exit(1)
 
 
