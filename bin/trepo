@@ -19,7 +19,7 @@ import yaml
 import trepo
 import requests
 import functools
-import traceback
+#import traceback
 import subprocess
 from argparse import (ArgumentParser,
                       RawTextHelpFormatter)
@@ -80,7 +80,11 @@ def convert_snapshot_version(version='latest'):
 def get_manifest(version, target):
     """Get a manifest xml from remote http server"""
     url = UBS_MANIFEST_URL.format(version=version, target=target)
-    return requests.get(url).text
+    resp = requests.get(url)
+    if resp.status_code != 200:
+        raise Exception('Can not access {}. '
+                        'Is {} correct snapshot version?'.format(url, version))
+    return resp.text
 
 
 def find_base_repository_version(version):
@@ -158,6 +162,7 @@ def cmd_init(args):
 
     # Get manifest.xml from remote (download.tizen.org)
     snapshot_version = convert_snapshot_version(snapshot_version)
+    print('snapshot version: {}'.format(snapshot_version))
     remote_manifest = get_manifest(snapshot_version, target_type)
     remote_soup = BeautifulSoup(remote_manifest, 'xml')
 
@@ -342,6 +347,7 @@ This wrapper helps users can init and sync tizen source code more easily.
 
 try:
     sys.exit(main(sys.argv[1:]))
-except Exception:
-    print(traceback.format_exc())
+except Exception as e:
+    #print(traceback.format_exc())
+    print(e)
     sys.exit(-1)
