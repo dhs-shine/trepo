@@ -22,7 +22,6 @@ import functools
 import subprocess
 from argparse import (ArgumentParser,
                       RawTextHelpFormatter)
-from distutils.dir_util import copy_tree
 from bs4 import BeautifulSoup
 
 
@@ -37,13 +36,29 @@ PLATFORM_FETCH_URL = 'ssh://review.tizen.org/'
 # Configurations
 REMOTE_NAME = 'origin'
 TREPO_META_DIR = '.trepo'
-TREPO_INFO = '{}/trepo_info'.format(TREPO_META_DIR)
+TREPO_INFO = 'trepo_info'
 REPO_CMD = '{}/repo'.format(trepo.__path__[0])
 VERSION_PATTERN = '[0-9]{8}\.[0-9]{1,2}'
 UBS_VERSION_PREFIX = 'tizen-unified_'
 
 
 # Helpers
+def find_trepo_path():
+    """Look for a trepo path, starting at the current directory."""
+    curdir = os.getcwd()
+    trepo_info = None
+
+    olddir = None
+    while curdir != '/' and curdir != olddir and not trepo_info:
+        trepo_info = os.path.join(curdir, TREPO_META_DIR, TREPO_INFO)
+        if not os.path.exists(trepo_info):
+            trepo_info = None
+            olddir = curdir
+            curdir = os.path.dirname(curdir)
+    # trepo workspace, trepo_info, trepo_metadir
+    return (curdir, trepo_info, os.path.join(curdir, TREPO_META_DIR))
+
+
 def load_yaml(filename):
     """docstring for load_yaml"""
     with open(os.path.abspath(os.path.expanduser(filename)), 'r') as stream:
@@ -89,14 +104,14 @@ def find_base_repository_version(version):
 
 def gen_gbs_conf(target_type, snapshot_version):
     """docstring for gen_gbs_conf"""
-    with open('{}/gbs.conf.template'.format(TREPO_META_DIR), 'r') as f:
+    with open('{}/gbs.conf.template'.format(trepo.__path__[0]), 'r') as f:
         gbs_conf_template = f.read()
 
     base_version = find_base_repository_version(snapshot_version)
     gbs_conf = gbs_conf_template.format(target_type=target_type,
                                         base_version=base_version,
                                         snapshot_version=snapshot_version)
-    with open('{}/.gbs.conf'.format(os.getcwd()), 'w') as f:
+    with open('{}/.gbs.conf'.format(find_trepo_path()[0]), 'w') as f:
         f.write(gbs_conf)
 
 
@@ -124,9 +139,6 @@ def cmd_init(args):
 </manifest>
 """.format(fetch_url=PLATFORM_FETCH_URL, remote_name=REMOTE_NAME)
     manifest_soup = BeautifulSoup(manifest_text, 'xml')
-
-    src = trepo.__path__[0]
-    copy_tree(src, '{}/{}'.format(os.getcwd(), TREPO_META_DIR))
 
     config_file = args.config_file
     snapshot_version = args.snapshot_version
@@ -166,7 +178,7 @@ def cmd_init(args):
         manifest_soup.manifest.append(project)
 
     # Create temporary git to keep manifest xml file
-    manifest_dir = '{meta_dir}/manifest'.format(meta_dir=TREPO_META_DIR)
+    manifest_dir = '{}/{}/manifest'.format(os.getcwd() ,TREPO_META_DIR)
     git_cmd = ['git', 'init', manifest_dir]
     subprocess.call(git_cmd)
 
@@ -179,11 +191,10 @@ def cmd_init(args):
                      manifest_dir, 'add', 'default.xml'])
     subprocess.call(['git', '--git-dir', temp_gitdir, '--work-tree',
                      manifest_dir, 'commit', '-m', 'Update manifest'])
-    cwd = os.getcwd()
     repo_base_cmd = [REPO_CMD, 'init',
                      '-u', manifest_dir,
                      '--repo-url',
-                     '{}/{}/git-repo.git'.format(cwd, TREPO_META_DIR),
+                     '{}/git-repo.git'.format(trepo.__path__[0]),
                      '--repo-branch', 'stable',
                      '--quiet',
                      '--no-repo-verify']
@@ -194,7 +205,7 @@ def cmd_init(args):
     subprocess.call(repo_base_cmd)
 
     # Save trepo info
-    with open(TREPO_INFO, 'w') as f:
+    with open('{}/{}'.format(TREPO_META_DIR, TREPO_INFO), 'w') as f:
         yaml.dump({'snapshot_version': snapshot_version,
                    'target_type': target_type,
                    'package_names': [project['name']
@@ -206,9 +217,14 @@ def cmd_sync(args):
     """docstring for cmd_sync"""
     # Repo sync
     try:
-        trepo_info = load_yaml(TREPO_INFO)
+        trepo_info = load_yaml(find_trepo_path()[1])
         snapshot_version = trepo_info['snapshot_version']
-        repo_sync_cmd = [REPO_CMD, 'sync', '-f', '-j', '4']
+        repo_sync_cmd = [REPO_CMD, 'sync']
+
+        if args.force_broken:
+            repo_sync_cmd.append('-f')
+        if args.jobs:
+            repo_sync_cmd.extend(['-j', str(args.jobs)])
         subprocess.call(repo_sync_cmd)
 
         # Create a topic branch
@@ -218,8 +234,7 @@ def cmd_sync(args):
         # Generate gbs.conf.
         gen_gbs_conf(trepo_info['target_type'], snapshot_version)
 
-    except Exception as e:
-        print(e)
+    except Exception:
         subprocess.call([REPO_CMD, 'sync'])
 
 
@@ -232,7 +247,7 @@ def cmd_status(args):
 def cmd_info(args):
     """docstring for cmd_info"""
     try:
-        trepo_info = load_yaml(TREPO_INFO)
+        trepo_info = load_yaml(find_trepo_path()[1])
         snapshot_version = trepo_info['snapshot_version']
         target_type = trepo_info['target_type']
         package_names = trepo_info['package_names']
@@ -241,8 +256,8 @@ def cmd_info(args):
         print('tizen repo package_names:')
         for package in package_names:
             print('  {}'.format(package))
-    except Exception as e:
-        print(e)
+    except Exception:
+        pass
     info_cmd = [REPO_CMD, 'info']
     subprocess.call(info_cmd)
 
@@ -284,7 +299,12 @@ def init_parser(parser):
 @subparser
 def sync_parser(parser):
     """docstring for sync_parser"""
-    pass
+    parser.add_argument('-f', '--force-broken',
+                        dest='force_broken', action='store_true',
+                        help="continue sync even if a project fails to sync")
+    parser.add_argument('-j', '--jobs',
+                        dest='jobs', action='store', type=int, default=4,
+                        help="projects to fetch simultaneously (default 4)")
 
 
 @subparser
