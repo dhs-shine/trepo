@@ -61,14 +61,14 @@ def find_trepo_path():
 
 
 def load_yaml(filename):
-    """docstring for load_yaml"""
+    """Load yaml file"""
     with open(os.path.abspath(os.path.expanduser(filename)), 'r') as stream:
         data = yaml.load(stream)
     return data
 
 
 def convert_snapshot_version(version='latest'):
-    """docstring for get_latest_version"""
+    """Get a snapshot version string like tizen-unified_YYYYMMDD.N"""
     if version != 'latest':
         return '{}{}'.format(UBS_VERSION_PREFIX, version)
     url = UBS_BUILDXML_URL.format(version='latest')
@@ -78,13 +78,13 @@ def convert_snapshot_version(version='latest'):
 
 
 def get_manifest(version, target):
-    """docstring for get_manifest"""
+    """Get a manifest xml from remote http server"""
     url = UBS_MANIFEST_URL.format(version=version, target=target)
     return requests.get(url).text
 
 
 def find_base_repository_version(version):
-    """docstring for find_base_rpm_repository"""
+    """Find a proper base rpm repository version to generate gbs.conf file"""
     base_soup = BeautifulSoup(requests.get(BASE_URL).text, 'html.parser')
     base_lms = []
     for base in base_soup.find_all('a', attrs={'href':
@@ -104,7 +104,7 @@ def find_base_repository_version(version):
 
 
 def gen_gbs_conf(target_type, snapshot_version):
-    """docstring for gen_gbs_conf"""
+    """Gnerate a gbs conf and publish it to workspace"""
     with open('{}/gbs.conf.template'.format(trepo.__path__[0]), 'r') as f:
         gbs_conf_template = f.read()
 
@@ -132,7 +132,7 @@ def subparser(func):
 
 # Command handlers
 def cmd_init(args):
-    """docstring for cmd_init"""
+    """Initialize tizen repo in the current working directory"""
     manifest_text = """<?xml version="1.0" encoding="UTF-8"?>
 <manifest>
   <remote fetch="{fetch_url}" name="{remote_name}"/>
@@ -215,7 +215,7 @@ def cmd_init(args):
 
 
 def cmd_sync(args):
-    """docstring for cmd_sync"""
+    """Update working tree to the latest revision"""
     # Repo sync
     try:
         trepo_info = load_yaml(find_trepo_path()[1])
@@ -240,13 +240,13 @@ def cmd_sync(args):
 
 
 def cmd_status(args):
-    """docstring for cmd_status"""
+    """Show the working tree status"""
     status_cmd = [REPO_CMD, 'status']
     subprocess.call(status_cmd)
 
 
 def cmd_info(args):
-    """docstring for cmd_info"""
+    """Get info on the manifest branch, current branch or unmerged branches"""
     try:
         trepo_info = load_yaml(find_trepo_path()[1])
         snapshot_version = trepo_info['snapshot_version']
@@ -266,7 +266,7 @@ def cmd_info(args):
 # Sub parsers
 @subparser
 def init_parser(parser):
-    """docstring for init_parser"""
+    """Initialize tizen repo in the current working directory"""
 
     # trepo
     group = parser.add_argument_group('trepo options')
@@ -299,7 +299,7 @@ def init_parser(parser):
 
 @subparser
 def sync_parser(parser):
-    """docstring for sync_parser"""
+    """Update working tree to the latest revision"""
     parser.add_argument('-f', '--force-broken',
                         dest='force_broken', action='store_true',
                         help="continue sync even if a project fails to sync")
@@ -310,13 +310,13 @@ def sync_parser(parser):
 
 @subparser
 def status_parser(parser):
-    """docstring for status_parser"""
+    """Show the working tree status"""
     pass
 
 
 @subparser
 def info_parser(parser):
-    """docstring for info_parser"""
+    """Get info on the manifest branch, current branch or unmerged branches"""
     pass
 
 
