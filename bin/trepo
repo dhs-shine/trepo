@@ -25,6 +25,8 @@ from argparse import (ArgumentParser,
 from bs4 import BeautifulSoup
 
 
+# Version
+__version__ = '0.1'
 # Base URL
 BASE_URL = 'http://download.tizen.org/snapshots/tizen/base/'
 # Unified Build Snapshot URL
@@ -413,6 +415,10 @@ def main(argv):
 This wrapper helps users can init and sync tizen source code more easily.
 """
     parser = ArgumentParser(description=description)
+
+    parser.add_argument('-V', '--version',
+                        action='version',
+                        version='%(prog)s ' + __version__)
 
     parser.format_usage = parser.format_help
     subparsers = parser.add_subparsers(title='subcommands',
