@@ -21,7 +21,8 @@ import requests
 import functools
 import subprocess
 from argparse import (ArgumentParser,
-                      RawTextHelpFormatter)
+                      RawTextHelpFormatter,
+                      REMAINDER)
 from bs4 import BeautifulSoup
 
 
@@ -390,7 +391,7 @@ def forall_parser(parser):
     parser.add_argument('-c', '--command',
                         help='Command (and arguments) to execute',
                         dest='command',
-                        nargs='+',
+                        nargs=REMAINDER,
                         type=str)
     parser.add_argument('-e', '--abort-on-errors',
                         dest='abort_on_errors', action='store_true',
