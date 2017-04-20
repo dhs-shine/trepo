@@ -19,6 +19,7 @@ import yaml
 import trepo
 import requests
 import functools
+import traceback
 import subprocess
 from argparse import (ArgumentParser,
                       RawTextHelpFormatter)
@@ -341,6 +342,6 @@ This wrapper helps users can init and sync tizen source code more easily.
 
 try:
     sys.exit(main(sys.argv[1:]))
-except Exception as e:
-    print(e)
+except Exception:
+    print(traceback.format_exc())
     sys.exit(-1)
