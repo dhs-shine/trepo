@@ -288,7 +288,15 @@ def cmd_info(args):
     except Exception:
         pass
     info_cmd = [REPO_CMD, 'info']
+    if args.overview:
+        info_cmd.append('-o')
     subprocess.call(info_cmd)
+
+
+def cmd_branch(args):
+    """View current topic branches"""
+    branch_cmd = [REPO_CMD, 'branch']
+    subprocess.call(branch_cmd)
 
 
 # Sub parsers
@@ -345,6 +353,14 @@ def status_parser(parser):
 @subparser
 def info_parser(parser):
     """Get info on the manifest branch, current branch or unmerged branches"""
+    parser.add_argument('-o', '--overview',
+                        dest='overview', action='store_true',
+                        help='show overview of all local commits')
+
+
+@subparser
+def branch_parser(parser):
+    """View current topic branches"""
     pass
 
 
