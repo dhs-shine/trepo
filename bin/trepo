@@ -298,6 +298,8 @@ def cmd_info(args):
 def cmd_forall(args):
     """Run a shell command in each project"""
     forall_cmd = [REPO_CMD, 'forall']
+    if args.project:
+        forall_cmd.extend(args.project)
     if args.regex:
         forall_cmd.append('-r')
         forall_cmd.extend(args.regex)
@@ -380,6 +382,8 @@ def info_parser(parser):
 @subparser
 def forall_parser(parser):
     """Run a shell command in each project"""
+    parser.add_argument('project', nargs='*',
+                        help="Project names")
     parser.add_argument('-r', '--regex',
                         dest='regex', nargs='+',
                         help="Execute the command only on projects matching"
