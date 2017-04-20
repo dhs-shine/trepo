@@ -19,7 +19,6 @@ import yaml
 import trepo
 import requests
 import functools
-#import traceback
 import subprocess
 from argparse import (ArgumentParser,
                       RawTextHelpFormatter)
@@ -63,7 +62,7 @@ def find_trepo_path():
 
 def review_ssh_config():
     """docstring for review_ssh_config"""
-    ssh_warning="""Error: Can't find proper ssh config for review.tizen.org
+    ssh_warning = """Error: Can't find proper ssh config for review.tizen.org
 Please add proper ssh host configuration in ~/.ssh/config file.
 
 Example)
@@ -206,7 +205,7 @@ def cmd_init(args):
         manifest_soup.manifest.append(project)
 
     # Create temporary git to keep manifest xml file
-    manifest_dir = '{}/{}/manifest'.format(os.getcwd() ,TREPO_META_DIR)
+    manifest_dir = '{}/{}/manifest'.format(os.getcwd(), TREPO_META_DIR)
     git_cmd = ['git', 'init', manifest_dir]
     subprocess.call(git_cmd)
 
@@ -293,10 +292,27 @@ def cmd_info(args):
     subprocess.call(info_cmd)
 
 
-def cmd_branch(args):
-    """View current topic branches"""
-    branch_cmd = [REPO_CMD, 'branch']
-    subprocess.call(branch_cmd)
+def cmd_forall(args):
+    """Run a shell command in each project"""
+    forall_cmd = [REPO_CMD, 'forall']
+    if args.regex:
+        forall_cmd.append('-r')
+        forall_cmd.extend(args.regex)
+    if args.inverse_regex:
+        forall_cmd.append('-i')
+        forall_cmd.extend(args.inverse_regex)
+    if args.abort_on_errors:
+        forall_cmd.append('-e')
+    if args.project_header:
+        forall_cmd.append('-p')
+    if args.verbose:
+        forall_cmd.append('-v')
+    if args.jobs:
+        forall_cmd.extend(['-j', str(args.jobs)])
+    if args.command:
+        forall_cmd.append('-c')
+        forall_cmd.extend(args.command)
+    subprocess.call(forall_cmd)
 
 
 # Sub parsers
@@ -359,9 +375,35 @@ def info_parser(parser):
 
 
 @subparser
-def branch_parser(parser):
-    """View current topic branches"""
-    pass
+def forall_parser(parser):
+    """Run a shell command in each project"""
+    parser.add_argument('-r', '--regex',
+                        dest='regex', nargs='+',
+                        help="Execute the command only on projects matching"
+                             " regex or wildcard expression")
+    parser.add_argument('-i', '--inverse-regex',
+                        dest='inverse_regex', nargs='+',
+                        help="Execute the command only on projects not"
+                             " matching regex or wildcard expression")
+    parser.add_argument('-c', '--command',
+                        help='Command (and arguments) to execute',
+                        dest='command',
+                        nargs='+',
+                        type=str)
+    parser.add_argument('-e', '--abort-on-errors',
+                        dest='abort_on_errors', action='store_true',
+                        help='Abort if a command exits unsuccessfully')
+
+    group = parser.add_argument_group('Output')
+    group.add_argument('-p',
+                       dest='project_header', action='store_true',
+                       help='Show project headers before output')
+    group.add_argument('-v', '--verbose',
+                       dest='verbose', action='store_true',
+                       help='Show command error messages')
+    group.add_argument('-j', '--jobs',
+                       dest='jobs', action='store', type=int, default=1,
+                       help='number of commands to execute simultaneously')
 
 
 # Main function
@@ -387,6 +429,5 @@ This wrapper helps users can init and sync tizen source code more easily.
 try:
     sys.exit(main(sys.argv[1:]))
 except Exception as e:
-    #print(traceback.format_exc())
     print(e)
     sys.exit(-1)
