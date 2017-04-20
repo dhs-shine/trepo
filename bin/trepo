@@ -33,7 +33,8 @@ UBS_URL = 'http://download.tizen.org/snapshots/tizen/unified/{version}/'
 UBS_MANIFEST_URL = UBS_URL + 'builddata/manifest/{version}_{target}.xml'
 UBS_BUILDXML_URL = UBS_URL + 'build.xml'
 # Platform source URI
-PLATFORM_FETCH_URL = 'ssh://review.tizen.org/'
+PLATFORM_URL = 'review.tizen.org'
+PLATFORM_FETCH_URL = 'ssh://{url}/'.format(url=PLATFORM_URL)
 # Configurations
 REMOTE_NAME = 'origin'
 TREPO_META_DIR = '.trepo'
@@ -58,6 +59,27 @@ def find_trepo_path():
             curdir = os.path.dirname(curdir)
     # trepo workspace, trepo_info, trepo_metadir
     return (curdir, trepo_info, os.path.join(curdir, TREPO_META_DIR))
+
+
+def review_ssh_config():
+    """docstring for review_ssh_config"""
+    ssh_warning="""Error: Can't find proper ssh config for review.tizen.org
+Please add proper ssh host configuration in ~/.ssh/config file.
+
+Example)
+  Host review.tizen.org
+    User '<Your Tizen account>'
+    Port 29418
+    Identityfile '<Your ssh private key path for review.tizen.org>'
+"""
+    try:
+        with open(os.path.expanduser('~/.ssh/config'), 'r') as f:
+            ssh_config = f.read()
+    except FileNotFoundError:
+        raise Exception(ssh_warning)
+
+    if not re.findall(PLATFORM_URL, ssh_config):
+        raise Exception(ssh_warning)
 
 
 def load_yaml(filename):
@@ -221,6 +243,7 @@ def cmd_init(args):
 
 def cmd_sync(args):
     """Update working tree to the latest revision"""
+    review_ssh_config()
     # Repo sync
     try:
         trepo_info = load_yaml(find_trepo_path()[1])
