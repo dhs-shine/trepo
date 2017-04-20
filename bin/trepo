@@ -173,6 +173,7 @@ def cmd_init(args):
     snapshot_version = args.snapshot_version
     package_names = args.package_names
     target_type = args.target_type
+    regex = args.regex
 
     # -f option has the highest priority
     if config_file:
@@ -183,6 +184,8 @@ def cmd_init(args):
             target_type = config['target_type']
         if 'package_names' in config:
             package_names = config['package_names']
+        if 'regex' in config:
+            regex = config['regex']
 
     # Get manifest.xml from remote (download.tizen.org)
     snapshot_version = convert_snapshot_version(snapshot_version)
@@ -190,8 +193,10 @@ def cmd_init(args):
     remote_manifest = get_manifest(snapshot_version, target_type)
     remote_soup = BeautifulSoup(remote_manifest, 'xml')
 
-    if not package_names:
+    if not package_names and not regex:
         projects = [p for p in remote_soup.find_all('project')]
+    elif regex:
+        projects = remote_soup.find_all('project', {'name': re.compile(regex)})
     else:
         if type(package_names) is str:
             package_names = [p.strip() for p in package_names.split(',')]
@@ -347,6 +352,10 @@ def init_parser(parser):
                        dest='config_file',
                        help='tizenrepo configuration file name (yaml)',
                        metavar='CONFIGFILE')
+    group.add_argument('-r', '--regex',
+                       dest='regex',
+                       help='regular expression for clone packages',
+                       metavar='REGEX')
     # Other
     group = parser.add_argument_group('Other options')
     group.add_argument('--config-name',
