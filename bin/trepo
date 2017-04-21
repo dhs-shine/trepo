@@ -371,17 +371,17 @@ def init_parser(parser):
     group.add_argument('-p', '--project-names',
                        dest='project_names',
                        help='Initialize tizen repo with specific project names'
-                            '(Each project names are separated by comma). '
+                            ' (Each project names are separated by comma). '
                             'Initialize repo with all project sources '
                             'if this argument is None.',
-                       metavar='PACKAGENAMES')
+                       metavar='PROJECTNAMES')
     group.add_argument('-f', '--config-file',
                        dest='config_file',
                        help='Initialize tizen repo from yaml config file.',
                        metavar='CONFIGFILE')
     group.add_argument('-r', '--regex',
                        dest='regex',
-                       help='Initialize tizen repo with projects matching'
+                       help='Initialize tizen repo with projects matching '
                             'this regular expression.',
                        metavar='REGEX')
     # Other
