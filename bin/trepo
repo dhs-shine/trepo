@@ -31,7 +31,8 @@ __version__ = '0.1'
 # Base URL
 BASE_URL = 'http://download.tizen.org/snapshots/tizen/base/'
 # Unified Build Snapshot URL
-UBS_URL = 'http://download.tizen.org/snapshots/tizen/unified/{version}/'
+UB_URL = 'http://download.tizen.org/snapshots/tizen/unified/'
+UBS_URL = UB_URL + '{version}/'
 UBS_MANIFEST_URL = UBS_URL + 'builddata/manifest/{version}_{target}.xml'
 UBS_BUILDXML_URL = UBS_URL + 'build.xml'
 # Platform source URI
@@ -171,7 +172,7 @@ def cmd_init(args):
 
     config_file = args.config_file
     snapshot_version = args.snapshot_version
-    package_names = args.package_names
+    project_names = args.project_names
     target_type = args.target_type
     regex = args.regex
 
@@ -182,8 +183,8 @@ def cmd_init(args):
             snapshot_version = config['snapshot_version']
         if 'target_type' in config:
             target_type = config['target_type']
-        if 'package_names' in config:
-            package_names = config['package_names']
+        if 'project_names' in config:
+            project_names = config['project_names']
         if 'regex' in config:
             regex = config['regex']
 
@@ -193,20 +194,20 @@ def cmd_init(args):
     remote_manifest = get_manifest(snapshot_version, target_type)
     remote_soup = BeautifulSoup(remote_manifest, 'xml')
 
-    if not package_names and not regex:
+    if not project_names and not regex:
         projects = [p for p in remote_soup.find_all('project')]
     elif regex:
         projects = remote_soup.find_all('project', {'name': re.compile(regex)})
     else:
-        if type(package_names) is str:
-            package_names = [p.strip() for p in package_names.split(',')]
+        if type(project_names) is str:
+            project_names = [p.strip() for p in project_names.split(',')]
         projects = []
-        for package in package_names:
+        for project_name in project_names:
             project = remote_soup.find('project',
-                                       {'name': package.strip()})
+                                       {'name': project_name.strip()})
             if not project:
-                raise Exception('{} package does not exist in platform '
-                                'manifest.'.format(package))
+                raise Exception('{} project does not exist in platform '
+                                'manifest.'.format(project_name))
             projects.append(project)
 
     for project in projects:
@@ -243,13 +244,13 @@ def cmd_init(args):
     with open('{}/{}'.format(TREPO_META_DIR, TREPO_INFO), 'w') as f:
         yaml.dump({'snapshot_version': snapshot_version,
                    'target_type': target_type,
-                   'package_names': [project['name']
+                   'project_names': [project['name']
                                      for project in projects]},
                   f)
 
 
 def cmd_sync(args):
-    """Update working tree to the latest revision"""
+    """Update working tree to the tizen repo snapshot"""
     review_ssh_config()
     # Repo sync
     try:
@@ -277,6 +278,10 @@ def cmd_sync(args):
 def cmd_status(args):
     """Show the working tree status"""
     status_cmd = [REPO_CMD, 'status']
+    if args.jobs:
+        status_cmd.extend(['-j', str(args.jobs)])
+    if args.orphans:
+        status_cmd.append('-o')
     subprocess.call(status_cmd)
 
 
@@ -286,12 +291,12 @@ def cmd_info(args):
         trepo_info = load_yaml(find_trepo_path()[1])
         snapshot_version = trepo_info['snapshot_version']
         target_type = trepo_info['target_type']
-        package_names = trepo_info['package_names']
-        print('tizen repo snapshot_version: {}'.format(snapshot_version))
-        print('tizen repo target_type: {}'.format(target_type))
-        print('tizen repo package_names:')
-        for package in package_names:
-            print('  {}'.format(package))
+        project_names = trepo_info['project_names']
+        print('tizen repo snapshot version: {}'.format(snapshot_version))
+        print('tizen repo target type: {}'.format(target_type))
+        print('tizen repo project names:')
+        for project_name in project_names:
+            print('  {}'.format(project_name))
     except Exception:
         pass
     info_cmd = [REPO_CMD, 'info']
@@ -325,6 +330,19 @@ def cmd_forall(args):
     subprocess.call(forall_cmd)
 
 
+def cmd_snapshots(args):
+    """Get version list of tizen unified build snapshot"""
+    resp = requests.get(UB_URL)
+    if resp.status_code != 200:
+        raise Exception('Can not access {}. '
+                        'Is {} correct url?'.format(UB_URL))
+    soup = BeautifulSoup(resp.text, 'html.parser')
+    snapshots = soup.find_all('a', attrs={'href': re.compile(VERSION_PATTERN)})
+    print('List of tizen unified build snapshots')
+    for s in reversed(snapshots):
+        print('  {}'.format(s['href'].strip('/')[len(UBS_VERSION_PREFIX):]))
+
+
 # Sub parsers
 @subparser
 def init_parser(parser):
@@ -334,27 +352,33 @@ def init_parser(parser):
     group = parser.add_argument_group('trepo options')
     group.add_argument('-s', '--snapshot-version',
                        dest='snapshot_version',
-                       help='snapshot version string (YYYYMMDD.N)',
+                       help='Initialize tizen repo with specific snapshot '
+                            'version (YYYYMMDD.N). Default snapshot version'
+                            ' is "latest".',
                        default='latest',
                        metavar='SNAPSHOT')
     group.add_argument('-t', '--target-type',
                        dest='target_type',
-                       help='target type (standard/emulator). '
-                            'default value is standard',
+                       help='Get project lists from specific target manifest '
+                            '(standard/emulator). '
+                            'Default target type is "standard".',
                        metavar='TARGETTYPE',
                        default='standard')
-    group.add_argument('-p', '--package-names',
-                       dest='package_names',
-                       help='package names (separated by comma). '
-                       'If this is None then clone all package sources',
+    group.add_argument('-p', '--project-names',
+                       dest='project_names',
+                       help='Initialize tizen repo with specific project names'
+                            '(Each project names are separated by comma). '
+                            'Initialize repo with all project sources '
+                            'if this argument is None.',
                        metavar='PACKAGENAMES')
     group.add_argument('-f', '--config-file',
                        dest='config_file',
-                       help='tizenrepo configuration file name (yaml)',
+                       help='Initialize tizen repo from yaml config file.',
                        metavar='CONFIGFILE')
     group.add_argument('-r', '--regex',
                        dest='regex',
-                       help='regular expression for clone packages',
+                       help='Initialize tizen repo with projects matching'
+                            'this regular expression.',
                        metavar='REGEX')
     # Other
     group = parser.add_argument_group('Other options')
@@ -365,7 +389,7 @@ def init_parser(parser):
 
 @subparser
 def sync_parser(parser):
-    """Update working tree to the latest revision"""
+    """Update working tree to the tizen repo snapshot"""
     parser.add_argument('-f', '--force-broken',
                         dest='force_broken', action='store_true',
                         help="continue sync even if a project fails to sync")
@@ -377,7 +401,13 @@ def sync_parser(parser):
 @subparser
 def status_parser(parser):
     """Show the working tree status"""
-    pass
+    parser.add_argument('-j', '--jobs',
+                        dest='jobs', action='store', type=int, default=2,
+                        help="number of projects to check simultaneously")
+    parser.add_argument('-o', '--orphans',
+                        dest='orphans', action='store_true',
+                        help="include objects in working directory outside of"
+                             " repo projects")
 
 
 @subparser
@@ -420,6 +450,12 @@ def forall_parser(parser):
     group.add_argument('-j', '--jobs',
                        dest='jobs', action='store', type=int, default=1,
                        help='number of commands to execute simultaneously')
+
+
+@subparser
+def snapshots_parser(parser):
+    """Get version list of tizen unified build snapshot"""
+    pass
 
 
 # Main function
