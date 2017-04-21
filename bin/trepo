@@ -20,6 +20,7 @@ import trepo
 import requests
 import functools
 import subprocess
+from datetime import datetime
 from argparse import (ArgumentParser,
                       RawTextHelpFormatter,
                       REMAINDER)
@@ -45,6 +46,7 @@ TREPO_INFO = 'trepo_info'
 REPO_CMD = '{}/repo'.format(trepo.__path__[0])
 VERSION_PATTERN = '[0-9]{8}\.[0-9]{1,2}'
 UBS_VERSION_PREFIX = 'tizen-unified_'
+DATE_FORMAT_STR = '%a, %d %b %Y %X %Z'
 
 
 # Helpers
@@ -119,11 +121,13 @@ def find_base_repository_version(version):
     for base in base_soup.find_all('a', attrs={'href':
                                                re.compile(VERSION_PATTERN)}):
         base_build_xml = '{}{}build.xml'.format(BASE_URL, base['href'])
-        last_modified = requests.get(base_build_xml).headers['Last-Modified']
-        base_lms.append((base['href'], last_modified))
+        lm_str = requests.get(base_build_xml).headers['Last-Modified']
+        lm = datetime.strptime(lm_str, DATE_FORMAT_STR)
+        base_lms.append((base['href'], lm))
 
     ubs_build_xml = UBS_BUILDXML_URL.format(version=version)
-    ubs_lm = requests.get(ubs_build_xml).headers['Last-Modified']
+    ubs_lm_str = requests.get(ubs_build_xml).headers['Last-Modified']
+    ubs_lm = datetime.strptime(ubs_lm_str, DATE_FORMAT_STR)
 
     for base in reversed(base_lms):
         if base[1] < ubs_lm:
