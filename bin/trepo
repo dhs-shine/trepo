@@ -219,14 +219,18 @@ def cmd_init(args):
 
     # Create temporary git to keep manifest xml file
     manifest_dir = '{}/{}/manifest'.format(os.getcwd(), TREPO_META_DIR)
-    git_cmd = ['git', 'init', manifest_dir]
-    subprocess.call(git_cmd)
+    subprocess.call(['git', 'init', manifest_dir])
 
     with open('{manifest_dir}/'
               'default.xml'.format(manifest_dir=manifest_dir), 'w') as f:
         f.write(manifest_soup.prettify())
 
     temp_gitdir = '{manifest_dir}/.git'.format(manifest_dir=manifest_dir)
+    subprocess.call(['git', '--git-dir', temp_gitdir, '--work-tree',
+                     manifest_dir, 'config', 'user.name', 'tizen.infra'])
+    subprocess.call(['git', '--git-dir', temp_gitdir, '--work-tree',
+                     manifest_dir, 'config', 'user.email',
+                     'tizen.infra@samsung.com'])
     subprocess.call(['git', '--git-dir', temp_gitdir, '--work-tree',
                      manifest_dir, 'add', 'default.xml'])
     subprocess.call(['git', '--git-dir', temp_gitdir, '--work-tree',
@@ -260,6 +264,10 @@ def cmd_sync(args):
     try:
         trepo_info = load_yaml(find_trepo_path()[1])
         snapshot_version = trepo_info['snapshot_version']
+
+        # Generate gbs.conf.
+        gen_gbs_conf(trepo_info['target_type'], snapshot_version)
+
         repo_sync_cmd = [REPO_CMD, 'sync']
 
         if args.force_broken:
@@ -271,9 +279,6 @@ def cmd_sync(args):
         # Create a topic branch
         repo_start_cmd = [REPO_CMD, 'start', '--all', snapshot_version]
         subprocess.call(repo_start_cmd)
-
-        # Generate gbs.conf.
-        gen_gbs_conf(trepo_info['target_type'], snapshot_version)
 
     except Exception:
         subprocess.call([REPO_CMD, 'sync'])
