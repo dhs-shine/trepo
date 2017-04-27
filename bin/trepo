@@ -303,6 +303,8 @@ def cmd_info(args):
         project_names = trepo_info['project_names']
         print('tizen repo snapshot version: {}'.format(snapshot_version))
         print('tizen repo target type: {}'.format(target_type))
+        if args.short:
+            return
         print('tizen repo project names:')
         for project_name in project_names:
             print('  {}'.format(project_name))
@@ -425,6 +427,10 @@ def info_parser(parser):
     parser.add_argument('-o', '--overview',
                         dest='overview', action='store_true',
                         help='show overview of all local commits')
+    parser.add_argument('-s', '--short',
+                        dest='short', action='store_true',
+                        help='show short descriptions of tizen repo')
+
 
 
 @subparser
