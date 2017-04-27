@@ -38,7 +38,9 @@ UBS_MANIFEST_URL = UBS_URL + 'builddata/manifest/{version}_{target}.xml'
 UBS_BUILDXML_URL = UBS_URL + 'build.xml'
 # Platform source URI
 PLATFORM_URL = 'review.tizen.org'
-PLATFORM_FETCH_URL = 'ssh://{url}/'.format(url=PLATFORM_URL)
+PLATFORM_SSH_PORT = 29418
+PLATFORM_FETCH_URL = 'ssh://{url}:{port}/'.format(url=PLATFORM_URL,
+                                                  port=PLATFORM_SSH_PORT)
 # Configurations
 REMOTE_NAME = 'origin'
 TREPO_META_DIR = '.trepo'
