@@ -307,7 +307,8 @@ def cmd_info(args):
         print('tizen repo target type: {}'.format(target_type))
         if args.short:
             return
-        print('tizen repo project names:')
+        print('tizen repo project names '
+              '({} projects):'.format(len(project_names)))
         for project_name in project_names:
             print('  {}'.format(project_name))
         if args.list:
@@ -353,7 +354,8 @@ def cmd_snapshots(args):
                         'Is {} correct url?'.format(UB_URL))
     soup = BeautifulSoup(resp.text, 'html.parser')
     snapshots = soup.find_all('a', attrs={'href': re.compile(VERSION_PATTERN)})
-    print('List of tizen unified build snapshots')
+    print('List of tizen unified build snapshots'
+          ' ({} snapshots)'.format(len(snapshots)))
     for s in reversed(snapshots):
         print('  {}'.format(s['href'].strip('/')[len(UBS_VERSION_PREFIX):]))
 
@@ -372,7 +374,8 @@ def cmd_images(args):
                         'Is {} correct url?'.format(UB_URL))
     soup = BeautifulSoup(resp.text, 'html.parser')
     images = soup.find_all('a', attrs={'href': re.compile('^((?!\.\.).)*$')})
-    print('List of tizen unified build snapshots ({})'.format(snapshot))
+    print('List of tizen unified build snapshot images'
+          ' ({}, {} images)'.format(snapshot, len(images)))
     for i in images:
         print('  {}'.format(i['href'].strip('/')))
 
