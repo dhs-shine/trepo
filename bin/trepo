@@ -310,6 +310,8 @@ def cmd_info(args):
         print('tizen repo project names:')
         for project_name in project_names:
             print('  {}'.format(project_name))
+        if args.list:
+            return
     except Exception:
         pass
     info_cmd = [REPO_CMD, 'info']
@@ -432,6 +434,9 @@ def info_parser(parser):
     parser.add_argument('-s', '--short',
                         dest='short', action='store_true',
                         help='show short descriptions of tizen repo')
+    parser.add_argument('-l', '--list',
+                        dest='list', action='store_true',
+                        help='show project list of tizen repo')
 
 
 
