@@ -358,6 +358,25 @@ def cmd_snapshots(args):
         print('  {}'.format(s['href'].strip('/')[len(UBS_VERSION_PREFIX):]))
 
 
+def cmd_images(args):
+    """docstring for cmd_images"""
+    snapshot = 'latest'
+    if args.snapshot:
+        snapshot = args.snapshot
+    snapshot = convert_snapshot_version(snapshot)
+
+    IMG_ROOT = '{}{}/images/standard/'.format(UB_URL, snapshot)
+    resp = requests.get(IMG_ROOT)
+    if resp.status_code != 200:
+        raise Exception('Can not access {}. '
+                        'Is {} correct url?'.format(UB_URL))
+    soup = BeautifulSoup(resp.text, 'html.parser')
+    images = soup.find_all('a', attrs={'href': re.compile('^((?!\.\.).)*$')})
+    print('List of tizen unified build snapshots ({})'.format(snapshot))
+    for i in images:
+        print('  {}'.format(i['href'].strip('/')))
+
+
 # Sub parsers
 @subparser
 def init_parser(parser):
@@ -439,7 +458,6 @@ def info_parser(parser):
                         help='show project list of tizen repo')
 
 
-
 @subparser
 def forall_parser(parser):
     """Run a shell command in each project"""
@@ -478,6 +496,14 @@ def forall_parser(parser):
 def snapshots_parser(parser):
     """Get version list of tizen unified build snapshot"""
     pass
+
+
+@subparser
+def images_parser(parser):
+    """Get image list of tizen unified build snapshot"""
+    parser.add_argument('-s', '--snapshot',
+                        dest='snapshot', action='store',
+                        help='Get image list of specific snapshot')
 
 
 # Main function
