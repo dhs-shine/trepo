@@ -4,7 +4,7 @@ profile = profile.{target_type}
 
 ########################### PROFILES ############################
 [profile.standard]
-repos = repo.base-arm, repo.base-arm-debug, repo.base-arm64, repo.base-arm64-debug, repo.base-ia32, repo-base-ia32-debug, repo.base-x86_64, repo.base-x86_64-debug, repo.unified-standard
+repos = repo.base-arm, repo.base-arm-debug, repo.base-arm64, repo.base-arm64-debug, repo.base-ia32, repo.base-ia32-debug, repo.base-x86_64, repo.base-x86_64-debug, repo.unified-standard
 
 [profile.emulator]
 repos = repo.base-ia32, repo.base-ia32-debug, repo.base-x86_64, repo.baes-x86_64-debug, repo.unified-emulator
