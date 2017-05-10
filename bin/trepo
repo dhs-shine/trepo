@@ -74,11 +74,11 @@ def review_ssh_config():
 Please add proper ssh host configuration in ~/.ssh/config file.
 
 Example)
-  Host review.tizen.org
+  Host {url}
     User '<Your Tizen account>'
-    Port 29418
-    Identityfile '<Your ssh private key path for review.tizen.org>'
-"""
+    Port {port}
+    Identityfile '<Your ssh private key path for {url}>'
+""".format(url=PLATFORM_URL, port=PLATFORM_SSH_PORT)
     try:
         with open(os.path.expanduser('~/.ssh/config'), 'r') as f:
             ssh_config = f.read()
@@ -282,6 +282,13 @@ def cmd_sync(args):
         repo_start_cmd = [REPO_CMD, 'start', '--all', snapshot_version]
         subprocess.call(repo_start_cmd)
 
+        if args.commit_msg_hook:
+            repo_hook_cmd = [REPO_CMD, 'forall', '-c', 'scp', '-p', '-P',
+                             str(PLATFORM_SSH_PORT),
+                             '{}:hooks/commit-msg'.format(PLATFORM_URL),
+                             '.git/hooks/']
+            subprocess.call(repo_hook_cmd)
+
     except Exception:
         subprocess.call([REPO_CMD, 'sync'])
 
@@ -433,6 +440,9 @@ def sync_parser(parser):
     parser.add_argument('-j', '--jobs',
                         dest='jobs', action='store', type=int, default=4,
                         help="projects to fetch simultaneously (default 4)")
+    parser.add_argument('-c', '--commit-msg-hook',
+                        dest='commit_msg_hook', action='store_true',
+                        help="add commit-msg hook for git repositories")
 
 
 @subparser
