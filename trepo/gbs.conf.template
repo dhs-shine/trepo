@@ -4,10 +4,10 @@ profile = profile.{target_type}
 
 ########################### PROFILES ############################
 [profile.standard]
-repos = repo.base-arm, repo.base-arm64, repo.base-ia32, repo.base-x86_64, repo.unified-standard
+repos = repo.base-arm, repo.base-arm-debug, repo.base-arm64, repo.base-arm64-debug, repo.base-ia32, repo-base-ia32-debug, repo.base-x86_64, repo.base-x86_64-debug, repo.unified-standard
 
 [profile.emulator]
-repos = repo.base-ia32, repo.base-x86_64, repo.unified-emulator
+repos = repo.base-ia32, repo.base-ia32-debug, repo.base-x86_64, repo.baes-x86_64-debug, repo.unified-emulator
 
 ########################### REPO ADDRESSES ############################
 [repo.base-arm]
@@ -18,6 +18,14 @@ url=http://download.tizen.org/snapshots/tizen/base/{base_version}/repos/arm64/pa
 url=http://download.tizen.org/snapshots/tizen/base/{base_version}/repos/ia32/packages/
 [repo.base-x86_64]
 url=http://download.tizen.org/snapshots/tizen/base/{base_version}/repos/x86_64/packages/
+[repo.base-arm-debug]
+url=http://download.tizen.org/snapshots/tizen/base/{base_version}/repos/arm/debug/
+[repo.base-arm64-debug]
+url=http://download.tizen.org/snapshots/tizen/base/{base_version}/repos/arm64/debug/
+[repo.base-ia32-debug]
+url=http://download.tizen.org/snapshots/tizen/base/{base_version}/repos/ia32/debug/
+[repo.base-x86_64-debug]
+url=http://download.tizen.org/snapshots/tizen/base/{base_version}/repos/x86_64/debug/
 [repo.unified-standard]
 url=http://download.tizen.org/snapshots/tizen/unified/{snapshot_version}/repos/standard/packages/
 [repo.unified-emulator]
