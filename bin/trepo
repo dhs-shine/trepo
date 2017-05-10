@@ -283,8 +283,9 @@ def cmd_sync(args):
         subprocess.call(repo_start_cmd)
 
         if args.commit_msg_hook:
-            repo_hook_cmd = [REPO_CMD, 'forall', '-c', 'scp', '-p', '-P',
-                             str(PLATFORM_SSH_PORT),
+            jobs = args.jobs if args.jobs else 8
+            repo_hook_cmd = [REPO_CMD, 'forall', '-j', str(jobs),
+                             '-c', 'scp', '-p', '-P', str(PLATFORM_SSH_PORT),
                              '{}:hooks/commit-msg'.format(PLATFORM_URL),
                              '.git/hooks/']
             subprocess.call(repo_hook_cmd)
