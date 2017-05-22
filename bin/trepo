@@ -181,6 +181,7 @@ def cmd_init(args):
     project_names = args.project_names
     target_type = args.target_type
     regex = args.regex
+    i_regex = args.inverse_regex
 
     # -f option has the highest priority
     if config_file:
@@ -193,6 +194,8 @@ def cmd_init(args):
             project_names = config['project_names']
         if 'regex' in config:
             regex = config['regex']
+        if 'inverse_regex' in config:
+            i_regex = config['inverse_regex']
 
     # Get manifest.xml from remote (download.tizen.org)
     snapshot_version = convert_snapshot_version(snapshot_version)
@@ -200,21 +203,28 @@ def cmd_init(args):
     remote_manifest = get_manifest(snapshot_version, target_type)
     remote_soup = BeautifulSoup(remote_manifest, 'xml')
 
-    if not project_names and not regex:
-        projects = [p for p in remote_soup.find_all('project')]
-    elif regex:
-        projects = remote_soup.find_all('project', {'name': re.compile(regex)})
-    else:
+    # Get all project list
+    all_projects = [p for p in remote_soup.find_all('project')]
+
+    # project_names has high priority
+    if project_names:
         if type(project_names) is str:
-            project_names = [p.strip() for p in project_names.split(',')]
-        projects = []
-        for project_name in project_names:
-            project = remote_soup.find('project',
-                                       {'name': project_name.strip()})
-            if not project:
-                raise Exception('{} project does not exist in platform '
-                                'manifest.'.format(project_name))
-            projects.append(project)
+            project_name_r = project_names.replace(',', '|')
+        else:
+            project_name_r = '|'.join(project_names)
+
+        projects = remote_soup.find_all('project',
+                                        {'name': re.compile(project_name_r)})
+    else:
+        projects = list(all_projects)
+
+    # regex has 2nd priority
+    if regex:
+        projects = [p for p in all_projects if re.findall(regex, p['name'])]
+
+    # inverse_regex has 3nd priority
+    if i_regex:
+        projects = [p for p in projects if not re.findall(i_regex, p['name'])]
 
     for project in projects:
         manifest_soup.manifest.append(project)
@@ -425,6 +435,11 @@ def init_parser(parser):
                        help='Initialize tizen repo with projects matching '
                             'this regular expression.',
                        metavar='REGEX')
+    group.add_argument('-i', '--inverse-regex',
+                       dest='inverse_regex',
+                       help='Initialize tizen repo with projects not '
+                            'matching this regular expression.',
+                       metavar='INVERSEREGEX')
     # Other
     group = parser.add_argument_group('Other options')
     group.add_argument('--config-name',
