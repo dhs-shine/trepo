@@ -398,6 +398,26 @@ def cmd_images(args):
         print('  {}'.format(i['href'].strip('/')))
 
 
+def cmd_export(args):
+    """docstring for cmd_export"""
+
+    class IndentDumper(yaml.Dumper):
+        def increase_indent(self, flow=False, indentless=False):
+            return super(IndentDumper, self).increase_indent(flow, False)
+    try:
+        str_index = len(UBS_VERSION_PREFIX)
+        t_i = load_yaml(find_trepo_path()[1])
+        t_i['snapshot_version'] = t_i['snapshot_version'][str_index:]
+        filename = args.filename if args.filename else 'default.yml'
+        with open(filename, 'w') as f:
+            yaml.dump(t_i, f, default_flow_style=False,
+                      Dumper=IndentDumper)
+    except:
+        raise Exception("error: command 'export' requires repo to be installed"
+                        " first.\n"
+                        "         Use \"trepo init\" to install it here.")
+
+
 # Sub parsers
 @subparser
 def init_parser(parser):
@@ -533,6 +553,15 @@ def images_parser(parser):
     parser.add_argument('-s', '--snapshot',
                         dest='snapshot', action='store',
                         help='Get image list of specific snapshot')
+
+
+@subparser
+def export_parser(parser):
+    """Export trepo yaml file"""
+    parser.add_argument('-f', '--filename',
+                        dest='filename', action='store',
+                        help="File name for export. "
+                             "Default value is 'default.yml'")
 
 
 # Main function
