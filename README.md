@@ -285,6 +285,29 @@ You can export trepo yaml to reuse it on another directory or host.
 
     trepo export
 
+default yaml file name is 'default.yml'
+
+    cat default.yml
+
+Output:
+
+    project_names:
+     - platform/core/api/alarm
+     - platform/core/api/app-manager
+     - platform/core/api/application
+     - platform/core/api/asp
+     - platform/core/api/audio-io
+     - platform/core/api/base-utils
+     - platform/core/api/bluetooth
+     - platform/core/api/camera
+     - platform/core/api/common
+     - platform/core/api/connection
+     - platform/core/api/context
+     - platform/core/api/cordova-plugins
+     - platform/core/api/device
+     - platform/core/api/efl-util
+    snapshot_version: '20170524.4'
+    target_type: standard
 
 ### More options
 
