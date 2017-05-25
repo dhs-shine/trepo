@@ -279,6 +279,49 @@ You can build these source codes with gbs now.
 Please refer to https://wiki.tizen.org/GBS if you want to know more detail aboug gbs.
 
 
+### Show the working tree status
+
+You can see the working tree status with subcommand 'status'
+
+    trepo status
+
+Output:
+
+    project platform/core/api/alarm/                branch tizen-unified_20170524.4
+    project platform/core/api/app-manager/          branch tizen-unified_20170524.4
+    project platform/core/api/asp/                  branch tizen-unified_20170524.4
+    project platform/core/api/application/          branch tizen-unified_20170524.4
+    project platform/core/api/audio-io/             branch tizen-unified_20170524.4
+    project platform/core/api/base-utils/           branch tizen-unified_20170524.4
+    project platform/core/api/camera/               branch tizen-unified_20170524.4
+    project platform/core/api/bluetooth/            branch tizen-unified_20170524.4
+    project platform/core/api/common/               branch tizen-unified_20170524.4
+    project platform/core/api/connection/           branch tizen-unified_20170524.4
+    project platform/core/api/context/              branch tizen-unified_20170524.4
+    project platform/core/api/device/               branch tizen-unified_20170524.4
+    project platform/core/api/cordova-plugins/      branch tizen-unified_20170524.4
+    project platform/core/api/efl-util/             branch tizen-unified_20170524.4
+
+This show you current branch name and changes not staged for commit.
+For example, if you modify file platform/core/api/device/NOTICE then 'trepo status' show you unstaged file name.
+
+    project platform/core/api/alarm/                branch tizen-unified_20170524.4
+    project platform/core/api/app-manager/          branch tizen-unified_20170524.4
+    project platform/core/api/asp/                  branch tizen-unified_20170524.4
+    project platform/core/api/application/          branch tizen-unified_20170524.4
+    project platform/core/api/audio-io/             branch tizen-unified_20170524.4
+    project platform/core/api/base-utils/           branch tizen-unified_20170524.4
+    project platform/core/api/bluetooth/            branch tizen-unified_20170524.4
+    project platform/core/api/camera/               branch tizen-unified_20170524.4
+    project platform/core/api/common/               branch tizen-unified_20170524.4
+    project platform/core/api/connection/           branch tizen-unified_20170524.4
+    project platform/core/api/context/              branch tizen-unified_20170524.4
+    project platform/core/api/device/               branch tizen-unified_20170524.4
+     -m     NOTICE
+    project platform/core/api/cordova-plugins/      branch tizen-unified_20170524.4
+    project platform/core/api/efl-util/             branch tizen-unified_20170524.4
+
+
 ### Export trepo yaml
 
 You can export trepo yaml to reuse it on another directory or host.
