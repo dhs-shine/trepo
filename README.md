@@ -4,7 +4,7 @@ This is a git-repo wrapper to manage tizen platform source codes on your host mo
 
 http://download.tizen.org/snapshots/tizen/unified/latest/builddata/manifest/ provides you repo manifest xmls on website, but if you want to clone source codes with git-repo tools and that manifest then the xml file has to be located in git repository. ('repo init' requires git uri with -u option.)
 
-This wrapper will generate temporary git automatically and update manifest.xml. You just need to pass a few arguments (tizen snapshot version, regex for filtering projects, etc) then trepo tool initialze proper repo workspace.
+This wrapper will generate temporary git automatically and update manifest.xml. You just need to pass a few arguments (tizen snapshot version, regex for filtering projects, etc) then trepo tool initialize proper repo workspace.
 
 # How to build and install
 
@@ -82,7 +82,7 @@ Output:
 
 
 
-Example) You can reinitilize your trepo workspace whenever you want. Let's reinitialize trepo workspace based on 20170524.1, includes 'kernel' string in project name but do not include 'u-boot' string.
+Example) You can reinitialize your trepo workspace whenever you want. Let's reinitialize trepo workspace based on 20170524.1, includes 'kernel' string in project name but do not include 'u-boot' string.
 
     trepo init -s 20170524.1 -r 'kernel' -i 'u-boot'
     trepo info -l
