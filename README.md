@@ -233,7 +233,7 @@ You can figure out that platform source codes are synced.
     ....
 
 And this sync command generate a proper .gbs.conf file, too.
-You can build tizen plaform source code with gbs without gbs.conf configuration manually.
+You can build tizen plaform source code with gbs without gbs.conf configuration.
 
     cat .gbs.conf
 
