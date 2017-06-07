@@ -14,6 +14,7 @@ Depends: ${python3:Depends}, ${misc:Depends},
  python3-yaml (>= 3.10),
  python3-requests (>= 2.2.1),
  python3-bs4 (>= 4.2.1),
+ python3-lxml (>= 3.3),
  git (>= 1.9),
 Description: Tizen repo
  Tizen repo is a wrapper of git-repo for tizen platform source management
