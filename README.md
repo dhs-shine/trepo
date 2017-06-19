@@ -276,7 +276,7 @@ You can build these source codes with gbs now.
 
     gbs build -A armv7l --threads=4
 
-Please refer to https://wiki.tizen.org/GBS if you want to know more detail aboug gbs.
+Please refer to https://wiki.tizen.org/GBS if you want to know more detail about gbs.
 
 
 ### Show the working tree status
