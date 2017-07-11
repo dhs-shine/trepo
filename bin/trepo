@@ -198,7 +198,7 @@ def cmd_init(args):
             i_regex = config['inverse_regex']
 
     trepo_ws, trepo_info, trepo_meta = find_trepo_path()
-    if trepo_info:
+    if trepo_info and trepo_ws != os.getcwd():
         err_msg = '''trepo has been initialized in {trepo_ws}.
 If this is not the directory in which you want to initialize trepo, please run:
   rm -rf {trepo_meta} {trepo_ws}/.repo
