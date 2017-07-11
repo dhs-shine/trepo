@@ -197,6 +197,14 @@ def cmd_init(args):
         if 'inverse_regex' in config:
             i_regex = config['inverse_regex']
 
+    trepo_ws, trepo_info, trepo_meta = find_trepo_path()
+    if trepo_info:
+        err_msg = '''trepo has been initialized in {trepo_ws}.
+If this is not the directory in which you want to initialize trepo, please run:
+  rm -rf {trepo_meta} {trepo_ws}/.repo
+and try again.'''.format(trepo_ws=trepo_ws, trepo_meta=trepo_meta)
+        raise Exception(err_msg)
+
     # Get manifest.xml from remote (download.tizen.org)
     snapshot_version = convert_snapshot_version(snapshot_version)
     print('snapshot version: {}'.format(snapshot_version))
