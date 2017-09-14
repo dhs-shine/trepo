@@ -28,21 +28,29 @@ from bs4 import BeautifulSoup
 
 
 # Version
-__version__ = '0.1'
-# Base URL
-BASE_URL = 'http://download.tizen.org/snapshots/tizen/base/'
-# Unified Build Snapshot URL
-UB_URL = 'http://download.tizen.org/snapshots/tizen/unified/'
-UBS_URL = UB_URL + '{version}/'
-UBS_MANIFEST_URL = UBS_URL + 'builddata/manifest/{version}_{target}.xml'
-UBS_BUILDXML_URL = UBS_URL + 'build.xml'
-# Platform source URI
-PLATFORM_URL = 'review.tizen.org'
-PLATFORM_SSH_PORT = 29418
-PLATFORM_FETCH_URL = 'ssh://{url}:{port}/'.format(url=PLATFORM_URL,
-                                                  port=PLATFORM_SSH_PORT)
+__version__ = '0.2'
+
+__conf_file__ = os.path.join(os.path.expanduser('~'), '.trepo.conf')
+
+package_repo_info = {
+    'base': 'http://download.tizen.org/snapshots/tizen/base/',
+    'unified': 'http://download.tizen.org/snapshots/tizen/unified/',
+    'unified_snapshot': lambda: package_repo_info['unified'] + '{version}/',
+    'unified_snapshot_manifest': lambda: package_repo_info['unified_snapshot']()
+        + 'builddata/manifest/{version}_{target}.xml',
+    'unified_snapshot_buildxml': lambda: package_repo_info['unified_snapshot']()
+        + 'build.xml'
+}
+
+source_repo_info = {
+    'hostname': 'review.tizen.org',
+    'ssh_port': 29418,
+    'fetch_url': lambda: 'ssh://' + source_repo_info['hostname']
+        + ':' + str(source_repo_info['ssh_port']) + '/',
+    'remote_name': 'origin'
+}
+
 # Configurations
-REMOTE_NAME = 'origin'
 TREPO_META_DIR = '.trepo'
 TREPO_INFO = 'trepo_info'
 REPO_CMD = '{}/repo'.format(trepo.__path__[0])
@@ -78,14 +86,14 @@ Example)
     User '<Your Tizen account>'
     Port {port}
     Identityfile '<Your ssh private key path for {url}>'
-""".format(url=PLATFORM_URL, port=PLATFORM_SSH_PORT)
+""".format(url=source_repo_info['hostname'], port=source_repo_info['ssh_port'])
     try:
         with open(os.path.expanduser('~/.ssh/config'), 'r') as f:
             ssh_config = f.read()
     except FileNotFoundError:
         raise Exception(ssh_warning)
 
-    if not re.findall(PLATFORM_URL, ssh_config):
+    if not re.findall(source_repo_info['hostname'], ssh_config):
         raise Exception(ssh_warning)
 
 
@@ -100,7 +108,8 @@ def convert_snapshot_version(version='latest'):
     """Get a snapshot version string like tizen-unified_YYYYMMDD.N"""
     if version != 'latest':
         return '{}{}'.format(UBS_VERSION_PREFIX, version)
-    url = UBS_BUILDXML_URL.format(version='latest')
+    url = package_repo_info[
+        'unified_snapshot_buildxml']().format(version='latest')
     text = requests.get(url).text
     return re.findall('{}{}'.format(UBS_VERSION_PREFIX, VERSION_PATTERN),
                       text)[-1]
@@ -108,7 +117,8 @@ def convert_snapshot_version(version='latest'):
 
 def get_manifest(version, target):
     """Get a manifest xml from remote http server"""
-    url = UBS_MANIFEST_URL.format(version=version, target=target)
+    url = package_repo_info['unified_snapshot_manifest']().format(
+        version=version, target=target)
     resp = requests.get(url)
     if resp.status_code != 200:
         raise Exception('Can not access {}. '
@@ -118,16 +128,19 @@ def get_manifest(version, target):
 
 def find_base_repository_version(version):
     """Find a proper base rpm repository version to generate gbs.conf file"""
-    base_soup = BeautifulSoup(requests.get(BASE_URL).text, 'html.parser')
+    base_soup = BeautifulSoup(
+        requests.get(package_repo_info['base']).text, 'html.parser')
     base_lms = []
     for base in base_soup.find_all('a', attrs={'href':
                                                re.compile(VERSION_PATTERN)}):
-        base_build_xml = '{}{}build.xml'.format(BASE_URL, base['href'])
+        base_build_xml = '{}{}build.xml'.format(
+            package_repo_info['base'], base['href'])
         lm_str = requests.get(base_build_xml).headers['Last-Modified']
         lm = datetime.strptime(lm_str, DATE_FORMAT_STR)
         base_lms.append((base['href'], lm))
 
-    ubs_build_xml = UBS_BUILDXML_URL.format(version=version)
+    ubs_build_xml = package_repo_info[
+        'unified_snapshot_buildxml']().format(version=version)
     ubs_lm_str = requests.get(ubs_build_xml).headers['Last-Modified']
     ubs_lm = datetime.strptime(ubs_lm_str, DATE_FORMAT_STR)
 
@@ -144,7 +157,9 @@ def gen_gbs_conf(target_type, snapshot_version):
         gbs_conf_template = f.read()
 
     base_version = find_base_repository_version(snapshot_version)
-    gbs_conf = gbs_conf_template.format(target_type=target_type,
+    gbs_conf = gbs_conf_template.format(base_url=package_repo_info['base'],
+                                        unified_url=package_repo_info['unified'],
+                                        target_type=target_type,
                                         base_version=base_version,
                                         snapshot_version=snapshot_version)
     with open('{}/.gbs.conf'.format(find_trepo_path()[0]), 'w') as f:
@@ -173,7 +188,8 @@ def cmd_init(args):
   <remote fetch="{fetch_url}" name="{remote_name}"/>
   <default remote="{remote_name}"/>
 </manifest>
-""".format(fetch_url=PLATFORM_FETCH_URL, remote_name=REMOTE_NAME)
+""".format(fetch_url=source_repo_info['fetch_url'](),
+           remote_name=source_repo_info['remote_name'])
     manifest_soup = BeautifulSoup(manifest_text, 'xml')
 
     config_file = args.config_file
@@ -303,8 +319,10 @@ def cmd_sync(args):
         if args.commit_msg_hook:
             jobs = args.jobs if args.jobs else 8
             repo_hook_cmd = [REPO_CMD, 'forall', '-j', str(jobs),
-                             '-c', 'scp', '-p', '-P', str(PLATFORM_SSH_PORT),
-                             '{}:hooks/commit-msg'.format(PLATFORM_URL),
+                             '-c', 'scp', '-p', '-P', str(
+                                 source_repo_info['ssh_port']),
+                             '{}:hooks/commit-msg'.format(
+                                 source_repo_info['hostname']),
                              '.git/hooks/']
             subprocess.call(repo_hook_cmd)
 
@@ -374,10 +392,10 @@ def cmd_forall(args):
 
 def cmd_snapshots(args):
     """Get version list of tizen unified build snapshot"""
-    resp = requests.get(UB_URL)
+    resp = requests.get(package_repo_info['unified'])
     if resp.status_code != 200:
         raise Exception('Can not access {}. '
-                        'Is {} correct url?'.format(UB_URL))
+                        'Is {} correct url?'.format(package_repo_info['unified']))
     soup = BeautifulSoup(resp.text, 'html.parser')
     snapshots = soup.find_all('a', attrs={'href': re.compile(VERSION_PATTERN)})
     print('List of tizen unified build snapshots'
@@ -393,11 +411,12 @@ def cmd_images(args):
         snapshot = args.snapshot
     snapshot = convert_snapshot_version(snapshot)
 
-    IMG_ROOT = '{}{}/images/standard/'.format(UB_URL, snapshot)
+    IMG_ROOT = '{}{}/images/standard/'.format(
+        package_repo_info['unified'], snapshot)
     resp = requests.get(IMG_ROOT)
     if resp.status_code != 200:
         raise Exception('Can not access {}. '
-                        'Is {} correct url?'.format(UB_URL))
+                        'Is {} correct url?'.format(package_repo_info['unified']))
     soup = BeautifulSoup(resp.text, 'html.parser')
     images = soup.find_all('a', attrs={'href': re.compile('^((?!\.\.).)*$')})
     print('List of tizen unified build snapshot images'
@@ -410,6 +429,7 @@ def cmd_export(args):
     """docstring for cmd_export"""
 
     class IndentDumper(yaml.Dumper):
+
         def increase_indent(self, flow=False, indentless=False):
             return super(IndentDumper, self).increase_indent(flow, False)
     try:
@@ -572,6 +592,20 @@ def export_parser(parser):
                              "Default value is 'default.yml'")
 
 
+def init_conf():
+    """docstring for init_conffile"""
+    if not os.path.exists(__conf_file__):
+        open(__conf_file__, 'w').close()
+    conf = load_yaml(__conf_file__)
+    global package_repo_info, UBS_VERSION_PREFIX
+    if conf and conf['base_url']:
+        package_repo_info['base'] = conf['base_url']
+    if conf and conf['unified_url']:
+        package_repo_info['unified'] = conf['unified_url']
+    if conf and conf['version_prefix']:
+        UBS_VERSION_PREFIX = conf['version_prefix']
+
+
 # Main function
 def main(argv):
     """docstring for main"""
@@ -597,6 +631,7 @@ This wrapper helps users can init and sync tizen source code more easily.
     globals()[args.module](args)
 
 try:
+    init_conf()
     sys.exit(main(sys.argv[1:]))
 except Exception as e:
     print(e)
