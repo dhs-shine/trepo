@@ -595,7 +595,11 @@ def export_parser(parser):
 def init_conf():
     """docstring for init_conffile"""
     if not os.path.exists(__conf_file__):
-        open(__conf_file__, 'w').close()
+        with open('{}/trepo.conf.template'.format(trepo.__path__[0]), 'r') as f:
+            trepo_conf = f.read()
+        with open(__conf_file__, 'w') as f:
+            f.write(trepo_conf)
+
     conf = load_yaml(__conf_file__)
     global package_repo_info, UBS_VERSION_PREFIX
     if conf and conf['base_url']:
