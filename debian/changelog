@@ -1,3 +1,9 @@
+trepo (0.2) unstable; urgency=low
+
+  * Support .trepo.conf
+
+ -- Donghoon Shin <dhs.shin@samsung.com>  Thu, 14 Sep 2017 13:01:30 +0900
+
 trepo (0.1) unstable; urgency=low
 
   * Initial release
