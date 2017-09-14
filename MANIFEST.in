@@ -18,5 +18,6 @@ include LICENSE
 include MANIFEST.in
 include setup.py
 include trepo/gbs.conf.template
+include trepo/trepo.conf.template
 include trepo/repo
 recursive-include trepo/git-repo.git *

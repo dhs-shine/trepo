@@ -1,0 +1,3 @@
+base_url: http://download.tizen.org/snapshots/tizen/base/
+unified_url: http://download.tizen.org/snapshots/tizen/unified/
+version_prefix: tizen-unified_
