@@ -648,14 +648,17 @@ def init_conf():
 
     conf = load_yaml(__conf_file__)
     global package_repo_info
-    if conf and conf['base_url']:
-        package_repo_info['base'] = conf['base_url']
-    if conf and conf['target_url']:
-        package_repo_info['target'] = conf['target_url']
-    if conf and conf['target_type']:
-        package_repo_info['target_type'] = conf['target_type']
-    if conf and conf['version_prefix']:
-        package_repo_info['target_version_prefix'] = conf['version_prefix']
+    if conf:
+        default = conf.get('default')
+        selected_conf = conf.get(default)
+    if selected_conf and selected_conf.get('base_url'):
+        package_repo_info['base'] = selected_conf.get('base_url')
+    if selected_conf and selected_conf.get('target_url'):
+        package_repo_info['target'] = selected_conf.get('target_url')
+    if selected_conf and selected_conf.get('target_type'):
+        package_repo_info['target_type'] = selected_conf.get('target_type')
+    if selected_conf and selected_conf.get('version_prefix'):
+        package_repo_info['target_version_prefix'] = selected_conf.get('version_prefix')
 
 
 # Main function

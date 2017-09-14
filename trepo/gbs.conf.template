@@ -8,22 +8,22 @@ repos = repo.base, repo.base-arm, repo.base-arm-debug, repo.base-arm64, repo.bas
 
 ########################### REPO ADDRESSES ############################
 [repo.base]
-url={base_url}/{base_version}/repos/{target_type}/packages/
+url={base_url}{base_version}/repos/{target_type}/packages/
 [repo.base-arm]
-url={base_url}/{base_version}/repos/arm/packages/
+url={base_url}{base_version}/repos/arm/packages/
 [repo.base-arm64]
-url={base_url}/{base_version}/repos/arm64/packages/
+url={base_url}{base_version}/repos/arm64/packages/
 [repo.base-ia32]
-url={base_url}/{base_version}/repos/ia32/packages/
+url={base_url}{base_version}/repos/ia32/packages/
 [repo.base-x86_64]
-url={base_url}/{base_version}/repos/x86_64/packages/
+url={base_url}{base_version}/repos/x86_64/packages/
 [repo.base-arm-debug]
-url={base_url}/{base_version}/repos/arm/debug/
+url={base_url}{base_version}/repos/arm/debug/
 [repo.base-arm64-debug]
-url={base_url}/{base_version}/repos/arm64/debug/
+url={base_url}{base_version}/repos/arm64/debug/
 [repo.base-ia32-debug]
-url={base_url}/{base_version}/repos/ia32/debug/
+url={base_url}{base_version}/repos/ia32/debug/
 [repo.base-x86_64-debug]
-url={base_url}/{base_version}/repos/x86_64/debug/
+url={base_url}{base_version}/repos/x86_64/debug/
 [repo.{target_type}]
-url={target_url}/{snapshot_version}/repos/{target_type}/packages/
+url={target_url}{snapshot_version}/repos/{target_type}/packages/

@@ -1,4 +1,31 @@
-base_url: http://download.tizen.org/snapshots/tizen/base/
-target_url: http://download.tizen.org/snapshots/tizen/unified/
-version_prefix: tizen-unified_
-target_type: standard
+default: tizen
+
+tizen_3.0_mobile_target_tm1:
+  base_url: http://download.tizen.org/snapshots/tizen/3.0-base/
+  target_url: http://download.tizen.org/snapshots/tizen/3.0-mobile/
+  version_prefix: tizen-3.0-mobile_
+  target_type: target-TM1
+
+tizen_3.0_wearable_target_circle:
+  base_url: http://download.tizen.org/snapshots/tizen/3.0-base/
+  target_url: http://download.tizen.org/snapshots/tizen/3.0-wearable/
+  version_prefix: tizen-3.0-wearable_
+  target_type: target-circle
+
+tizen_3.0_tv_target_arm_wayland:
+  base_url: http://download.tizen.org/snapshots/tizen/3.0-base/
+  target_url: http://download.tizen.org/snapshots/tizen/3.0-tv/
+  version_prefix: tizen-3.0-tv_
+  target_type: arm-wayland
+
+tizen_4.0:
+  base_url: http://download.tizen.org/snapshots/tizen/4.0-base/
+  target_url: http://download.tizen.org/snapshots/tizen/4.0-unified/
+  version_prefix: tizen-4.0-unified_
+  target_type: standard
+
+tizen:
+  base_url: http://download.tizen.org/snapshots/tizen/base/
+  target_url: http://download.tizen.org/snapshots/tizen/unified/
+  version_prefix: tizen-unified_
+  target_type: standard
