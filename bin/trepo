@@ -34,12 +34,14 @@ __conf_file__ = os.path.join(os.path.expanduser('~'), '.trepo.conf')
 
 package_repo_info = {
     'base': 'http://download.tizen.org/snapshots/tizen/base/',
-    'unified': 'http://download.tizen.org/snapshots/tizen/unified/',
-    'unified_snapshot': lambda: package_repo_info['unified'] + '{version}/',
-    'unified_snapshot_manifest': lambda: package_repo_info['unified_snapshot']()
+    'target': 'http://download.tizen.org/snapshots/tizen/unified/',
+    'target_snapshot': lambda: package_repo_info['target'] + '{version}/',
+    'target_snapshot_manifest': lambda: package_repo_info['target_snapshot']()
         + 'builddata/manifest/{version}_{target}.xml',
-    'unified_snapshot_buildxml': lambda: package_repo_info['unified_snapshot']()
-        + 'build.xml'
+    'target_snapshot_buildxml': lambda: package_repo_info['target_snapshot']()
+        + 'build.xml',
+    'target_version_prefix': 'tizen-unified_',
+    'target_type': 'standard'
 }
 
 source_repo_info = {
@@ -55,7 +57,6 @@ TREPO_META_DIR = '.trepo'
 TREPO_INFO = 'trepo_info'
 REPO_CMD = '{}/repo'.format(trepo.__path__[0])
 VERSION_PATTERN = '[0-9]{8}\.[0-9]{1,2}'
-UBS_VERSION_PREFIX = 'tizen-unified_'
 DATE_FORMAT_STR = '%a, %d %b %Y %X %Z'
 
 
@@ -107,17 +108,16 @@ def load_yaml(filename):
 def convert_snapshot_version(version='latest'):
     """Get a snapshot version string like tizen-unified_YYYYMMDD.N"""
     if version != 'latest':
-        return '{}{}'.format(UBS_VERSION_PREFIX, version)
-    url = package_repo_info[
-        'unified_snapshot_buildxml']().format(version='latest')
+        return '{}{}'.format(package_repo_info['target_version_prefix'], version)
+    url = package_repo_info['target_snapshot_buildxml']().format(version='latest')
     text = requests.get(url).text
-    return re.findall('{}{}'.format(UBS_VERSION_PREFIX, VERSION_PATTERN),
+    return re.findall('{}{}'.format(package_repo_info['target_version_prefix'], VERSION_PATTERN),
                       text)[-1]
 
 
 def get_manifest(version, target):
     """Get a manifest xml from remote http server"""
-    url = package_repo_info['unified_snapshot_manifest']().format(
+    url = package_repo_info['target_snapshot_manifest']().format(
         version=version, target=target)
     resp = requests.get(url)
     if resp.status_code != 200:
@@ -139,8 +139,7 @@ def find_base_repository_version(version):
         lm = datetime.strptime(lm_str, DATE_FORMAT_STR)
         base_lms.append((base['href'], lm))
 
-    ubs_build_xml = package_repo_info[
-        'unified_snapshot_buildxml']().format(version=version)
+    ubs_build_xml = package_repo_info['target_snapshot_buildxml']().format(version=version)
     ubs_lm_str = requests.get(ubs_build_xml).headers['Last-Modified']
     ubs_lm = datetime.strptime(ubs_lm_str, DATE_FORMAT_STR)
 
@@ -158,7 +157,7 @@ def gen_gbs_conf(target_type, snapshot_version):
 
     base_version = find_base_repository_version(snapshot_version)
     gbs_conf = gbs_conf_template.format(base_url=package_repo_info['base'],
-                                        unified_url=package_repo_info['unified'],
+                                        target_url=package_repo_info['target'],
                                         target_type=target_type,
                                         base_version=base_version,
                                         snapshot_version=snapshot_version)
@@ -192,6 +191,9 @@ def cmd_init(args):
            remote_name=source_repo_info['remote_name'])
     manifest_soup = BeautifulSoup(manifest_text, 'xml')
 
+    base_url = args.base_url
+    target_url = args.target_url
+    version_prefix = args.version_prefix
     config_file = args.config_file
     snapshot_version = args.snapshot_version
     project_names = args.project_names
@@ -202,6 +204,14 @@ def cmd_init(args):
     # -f option has the highest priority
     if config_file:
         config = load_yaml(config_file)
+        if 'base_url' in config:
+            base_url = config['base_url']
+        if 'target_url' in config:
+            target_url = config['target_url']
+        if 'target_type' in config:
+            target_type = config['target_type']
+        if 'version_prefix' in config:
+            version_prefix = config['version_prefix']
         if 'snapshot_version' in config:
             snapshot_version = config['snapshot_version']
         if 'target_type' in config:
@@ -212,6 +222,16 @@ def cmd_init(args):
             regex = config['regex']
         if 'inverse_regex' in config:
             i_regex = config['inverse_regex']
+
+    global package_repo_info
+    if base_url:
+        package_repo_info['base'] = base_url
+    if target_url:
+        package_repo_info['target'] = target_url
+    if version_prefix:
+        package_repo_info['target_version_prefix'] = version_prefix
+    if target_type:
+        package_repo_info['target_type'] = target_type
 
     trepo_ws, trepo_info, trepo_meta = find_trepo_path()
     if trepo_info and trepo_ws != os.getcwd():
@@ -224,7 +244,10 @@ and try again.'''.format(trepo_ws=trepo_ws, trepo_meta=trepo_meta)
     # Get manifest.xml from remote (download.tizen.org)
     snapshot_version = convert_snapshot_version(snapshot_version)
     print('snapshot version: {}'.format(snapshot_version))
-    remote_manifest = get_manifest(snapshot_version, target_type)
+    print('base url: {}'.format(package_repo_info['base']))
+    print('target url: {}'.format(package_repo_info['target']))
+    print('target type: {}'.format(package_repo_info['target_type']))
+    remote_manifest = get_manifest(snapshot_version, package_repo_info['target_type'])
     remote_soup = BeautifulSoup(remote_manifest, 'xml')
 
     # Get all project list
@@ -234,8 +257,10 @@ and try again.'''.format(trepo_ws=trepo_ws, trepo_meta=trepo_meta)
     if project_names:
         if type(project_names) is str:
             project_name_r = project_names.replace(',', '|')
+            project_name_r = project_name_r.replace('+', '\+')
         else:
             project_name_r = '|'.join(project_names)
+            project_name_r = project_name_r.replace('+', '\+')
 
         projects = remote_soup.find_all('project',
                                         {'name': re.compile(project_name_r)})
@@ -287,9 +312,12 @@ and try again.'''.format(trepo_ws=trepo_ws, trepo_meta=trepo_meta)
     # Save trepo info
     with open('{}/{}'.format(TREPO_META_DIR, TREPO_INFO), 'w') as f:
         yaml.dump({'snapshot_version': snapshot_version,
-                   'target_type': target_type,
+                   'target_type': package_repo_info['target_type'],
                    'project_names': [project['name']
-                                     for project in projects]},
+                                     for project in projects],
+                   'base_url': package_repo_info['base'],
+                   'target_url': package_repo_info['target'],
+                   'version_prefix': package_repo_info['target_version_prefix']},
                   f)
 
 
@@ -347,8 +375,12 @@ def cmd_info(args):
         snapshot_version = trepo_info['snapshot_version']
         target_type = trepo_info['target_type']
         project_names = trepo_info['project_names']
+        base_url = trepo_info['base_url']
+        target_url = trepo_info['target_url']
         print('tizen repo snapshot version: {}'.format(snapshot_version))
         print('tizen repo target type: {}'.format(target_type))
+        print('tizen repo base url: {}'.format(base_url))
+        print('tizen repo target url: {}'.format(target_url))
         if args.short:
             return
         print('tizen repo project names '
@@ -391,17 +423,19 @@ def cmd_forall(args):
 
 
 def cmd_snapshots(args):
-    """Get version list of tizen unified build snapshot"""
-    resp = requests.get(package_repo_info['unified'])
+    """Get version list of tizen build snapshot"""
+    resp = requests.get(package_repo_info['target'])
     if resp.status_code != 200:
         raise Exception('Can not access {}. '
-                        'Is {} correct url?'.format(package_repo_info['unified']))
+                        'Is {} correct url?'.format(package_repo_info['target']))
     soup = BeautifulSoup(resp.text, 'html.parser')
     snapshots = soup.find_all('a', attrs={'href': re.compile(VERSION_PATTERN)})
-    print('List of tizen unified build snapshots'
+    print('List of tizen build snapshots'
           ' ({} snapshots)'.format(len(snapshots)))
+    print('base_url: {}'.format(package_repo_info['base']))
+    print('target_url: {}'.format(package_repo_info['target']))
     for s in reversed(snapshots):
-        print('  {}'.format(s['href'].strip('/')[len(UBS_VERSION_PREFIX):]))
+        print('  {}'.format(s['href'].strip('/')[len(package_repo_info['target_version_prefix']):]))
 
 
 def cmd_images(args):
@@ -411,16 +445,18 @@ def cmd_images(args):
         snapshot = args.snapshot
     snapshot = convert_snapshot_version(snapshot)
 
-    IMG_ROOT = '{}{}/images/standard/'.format(
-        package_repo_info['unified'], snapshot)
+    # TODO: Replace IMG_ROOT
+    IMG_ROOT = '{}{}/images/{}/'.format(package_repo_info['target'], snapshot, package_repo_info['target_type'])
     resp = requests.get(IMG_ROOT)
     if resp.status_code != 200:
         raise Exception('Can not access {}. '
-                        'Is {} correct url?'.format(package_repo_info['unified']))
+                        'Is {} correct url?'.format(package_repo_info['target']))
     soup = BeautifulSoup(resp.text, 'html.parser')
     images = soup.find_all('a', attrs={'href': re.compile('^((?!\.\.).)*$')})
-    print('List of tizen unified build snapshot images'
+    print('List of tizen build snapshot images'
           ' ({}, {} images)'.format(snapshot, len(images)))
+    print('base_url: {}'.format(package_repo_info['base']))
+    print('target_url: {}'.format(package_repo_info['target']))
     for i in images:
         print('  {}'.format(i['href'].strip('/')))
 
@@ -433,7 +469,7 @@ def cmd_export(args):
         def increase_indent(self, flow=False, indentless=False):
             return super(IndentDumper, self).increase_indent(flow, False)
     try:
-        str_index = len(UBS_VERSION_PREFIX)
+        str_index = len(package_repo_info['target_version_prefix'])
         t_i = load_yaml(find_trepo_path()[1])
         t_i['snapshot_version'] = t_i['snapshot_version'][str_index:]
         filename = args.filename if args.filename else 'default.yml'
@@ -453,6 +489,18 @@ def init_parser(parser):
 
     # trepo
     group = parser.add_argument_group('trepo options')
+    group.add_argument('-b', '--base-url',
+                       dest='base_url',
+                       help='tizen repo base url.',
+                       metavar='BASEURL')
+    group.add_argument('-u', '--target-url',
+                       dest='target_url',
+                       help='tizen repo target url.',
+                       metavar='TARGETURL')
+    group.add_argument('-v', '--version-prefix',
+                       dest='version_prefix',
+                       help='tizen repo target version prefix.',
+                       metavar='VERSIONPREFIX')
     group.add_argument('-s', '--snapshot-version',
                        dest='snapshot_version',
                        help='Initialize tizen repo with specific snapshot '
@@ -463,10 +511,8 @@ def init_parser(parser):
     group.add_argument('-t', '--target-type',
                        dest='target_type',
                        help='Get project lists from specific target manifest '
-                            '(standard/emulator). '
-                            'Default target type is "standard".',
-                       metavar='TARGETTYPE',
-                       default='standard')
+                            'ex) (standard/emulator). ',
+                       metavar='TARGETTYPE')
     group.add_argument('-p', '--project-names',
                        dest='project_names',
                        help='Initialize tizen repo with specific project names'
@@ -571,13 +617,13 @@ def forall_parser(parser):
 
 @subparser
 def snapshots_parser(parser):
-    """Get version list of tizen unified build snapshot"""
+    """Get version list of tizen build snapshot"""
     pass
 
 
 @subparser
 def images_parser(parser):
-    """Get image list of tizen unified build snapshot"""
+    """Get image list of tizen build snapshot"""
     parser.add_argument('-s', '--snapshot',
                         dest='snapshot', action='store',
                         help='Get image list of specific snapshot')
@@ -601,13 +647,15 @@ def init_conf():
             f.write(trepo_conf)
 
     conf = load_yaml(__conf_file__)
-    global package_repo_info, UBS_VERSION_PREFIX
+    global package_repo_info
     if conf and conf['base_url']:
         package_repo_info['base'] = conf['base_url']
-    if conf and conf['unified_url']:
-        package_repo_info['unified'] = conf['unified_url']
+    if conf and conf['target_url']:
+        package_repo_info['target'] = conf['target_url']
+    if conf and conf['target_type']:
+        package_repo_info['target_type'] = conf['target_type']
     if conf and conf['version_prefix']:
-        UBS_VERSION_PREFIX = conf['version_prefix']
+        package_repo_info['target_version_prefix'] = conf['version_prefix']
 
 
 # Main function
