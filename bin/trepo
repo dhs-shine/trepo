@@ -96,6 +96,7 @@ Example)
 
     if not re.findall(source_repo_info['hostname'], ssh_config):
         raise Exception(ssh_warning)
+    subprocess.call(['ssh', source_repo_info['hostname']])
 
 
 def load_yaml(filename):
